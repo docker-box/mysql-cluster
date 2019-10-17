@@ -8,7 +8,10 @@ master_container=mysql_master
 # 从库列表
 slave_containers=(mysql_slave mysql_slave2)
 # 所有的数据库集群列表
-all_containers=($master_container ${slave_containers[@]})
+all_containers=("$master_container" "${slave_containers[@]}")
+
+# 链接重试间隔时间 s
+retry_time=5
 
 #################### 函数定义 ####################
 # 获取服务器的ip
@@ -18,18 +21,16 @@ docker-ip() {
 
 #################### docker-compose初始化 ####################
 docker-compose down
-rm -rf ./master/data/*
-rm -rf ./slave/data/*
-rm -rf ./slave2/data/*
+rm -rf ./master/data/* ./slave/data/* ./slave2/data/*
 docker-compose build
 docker-compose up -d
 
 #################### 服务器初始化操作 ####################
 # 这个操作的目的是尝试连接服务器, 如果连接失败, 就等待4s后重试, 直到等待mysql服务器就绪, 并且连接上为止
-for container in ${all_containers[@]};do
+for container in "${all_containers[@]}";do
   until docker exec $container sh -c 'export MYSQL_PWD='$root_password'; mysql -u root -e ";"'
   do
-      echo "Waiting for mysql_master database connection..."
+      echo "等待 $container 连接中,请稍候,每 ${retry_time}s 尝试连接一次,可能会重试多次,直到容器启动完毕......"
       sleep 4
   done
 done
@@ -61,10 +62,11 @@ start_slave_cmd+="$start_slave_stmt"
 start_slave_cmd+='START SLAVE;"'
 
 # 执行从服务器与主服务器互通
-for slave in ${slave_containers[@]};do
+for slave in "${slave_containers[@]}";do
   # 从服务器连接主互通
   docker exec $slave sh -c "$start_slave_cmd"
   # 查看从服务器得状态
   docker exec $slave sh -c "export MYSQL_PWD='$root_password'; mysql -u root -e 'SHOW SLAVE STATUS \G'"
 done
 
+echo -e "\033[42;34m finish success !!! \033[0m"

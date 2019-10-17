@@ -18,8 +18,6 @@ services:
     image: mysql:5.7
     env_file:
       - ./slave/mysql_slave.env
-        name: kye1
-        address: key2
     container_name: "mysql_slave"
     restart: "no"
     ports:
