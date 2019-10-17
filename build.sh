@@ -11,7 +11,7 @@ slave_containers=(mysql_slave mysql_slave2)
 all_containers=("$master_container" "${slave_containers[@]}")
 
 # 链接重试间隔时间 s
-retry_time=5
+retry_duration=5
 
 #################### 函数定义 ####################
 # 获取服务器的ip
@@ -30,8 +30,8 @@ docker-compose up -d
 for container in "${all_containers[@]}";do
   until docker exec $container sh -c 'export MYSQL_PWD='$root_password'; mysql -u root -e ";"'
   do
-      echo "等待 $container 连接中,请稍候,每 ${retry_time}s 尝试连接一次,可能会重试多次,直到容器启动完毕......"
-      sleep 4
+      echo "等待 $container 连接中,请稍候,每 ${retry_duration}s 尝试连接一次,可能会重试多次,直到容器启动完毕......"
+      sleep $retry_duration
   done
 done
 
